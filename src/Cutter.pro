@@ -227,7 +227,9 @@ SOURCES += \
     common/RefreshDeferrer.cpp \
     dialogs/WelcomeDialog.cpp \
     RunScriptTask.cpp \
-    dialogs/EditMethodDialog.cpp
+    dialogs/EditMethodDialog.cpp \
+    plugins/CutterPythonPlugin.cpp \
+    common/PythonManager.cpp
 
 HEADERS  += \
     Cutter.h \
@@ -337,7 +339,9 @@ HEADERS  += \
     dialogs/WelcomeDialog.h \
     RunScriptTask.h \
     common/Json.h \
-    dialogs/EditMethodDialog.h
+    dialogs/EditMethodDialog.h \
+    plugins/CutterPythonPlugin.h \
+    common/PythonManager.h
 
 FORMS    += \
     dialogs/AboutDialog.ui \
