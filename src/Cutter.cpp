@@ -1806,7 +1806,9 @@ QList<SectionDescription> CutterCore::getAllSections()
         section.size = sectionObject[RJsonKey::size].toVariant().toULongLong();
         section.flags = sectionObject[RJsonKey::flags].toString();
         section.entropy =  sectionObject[RJsonKey::entropy].toString();
-
+        section.perm = sectionObject[RJsonKey::perm].toString();
+        section.ordinal = sectionObject[RJsonKey::ordinal].toInt();
+        
         ret << section;
     }
     return ret;
@@ -1845,7 +1847,6 @@ QList<SegmentDescription> CutterCore::getAllSegments()
         segment.size = segmentObject[RJsonKey::size].toVariant().toULongLong();
         segment.vsize = segmentObject[RJsonKey::vsize].toVariant().toULongLong();
         segment.perm =  segmentObject[RJsonKey::perm].toString();
-
         ret << segment;
     }
     return ret;

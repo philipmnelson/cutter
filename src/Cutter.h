@@ -193,6 +193,8 @@ struct SectionDescription {
     QString name;
     QString flags;
     QString entropy;
+    QString perm;
+    int ordinal;
 };
 
 struct SegmentDescription {

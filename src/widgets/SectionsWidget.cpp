@@ -64,6 +64,10 @@ QVariant SectionsModel::data(const QModelIndex &index, int role) const
             return RAddressString(section.vaddr + section.vsize);
         case SectionsModel::EntropyColumn:
             return section.entropy;
+	case SectionsModel::PermissionsColumn:
+            return section.perm;
+	case SectionsModel::OrdinalColumn:
+            return section.ordinal;
         default:
             return QVariant();
         }
@@ -93,6 +97,10 @@ QVariant SectionsModel::headerData(int section, Qt::Orientation, int role) const
             return tr("End Address");
         case SectionsModel::EntropyColumn:
             return tr("Entropy");
+        case SectionsModel::PermissionsColumn:
+            return tr("Permissions");
+        case SectionsModel::OrdinalColumn:
+            return tr("Ordinal");
         default:
             return QVariant();
         }
@@ -127,7 +135,10 @@ bool SectionsProxyModel::lessThan(const QModelIndex &left, const QModelIndex &ri
         return leftSection.vsize < rightSection.vsize;
     case SectionsModel::EntropyColumn:
         return leftSection.entropy < rightSection.entropy;
-
+    case SectionsModel::PermissionsColumn:
+        return leftSection.perm < rightSection.perm;
+    case SectionsModel::OrdinalColumn:
+        return leftSection.ordinal < rightSection.ordinal;
     default:
         break;
     }
@@ -548,7 +559,7 @@ void VirtualAddrDock::updateDock()
 
 int VirtualAddrDock::getValidMinSize()
 {
-    proxyModel->sort(1, Qt::AscendingOrder);
+    proxyModel->sort(1, Qt::AscendingOrder); 
     for (int i = 0; i < proxyModel->rowCount(); i++) {
         QModelIndex idx = proxyModel->index(i, 0);
         int size = idx.data(SectionsModel::SectionDescriptionRole).value<SectionDescription>().vsize;

@@ -37,7 +37,8 @@ private:
     QList<SectionDescription> *sections;
 
 public:
-    enum Column { NameColumn = 0, SizeColumn, AddressColumn, EndAddressColumn, EntropyColumn, ColumnCount };
+  enum Column { NameColumn = 0, SizeColumn, AddressColumn, EndAddressColumn, EntropyColumn,
+		PermissionsColumn, OrdinalColumn, ColumnCount };
     enum Role { SectionDescriptionRole = Qt::UserRole };
 
     SectionsModel(QList<SectionDescription> *sections, QObject *parent = nullptr);
