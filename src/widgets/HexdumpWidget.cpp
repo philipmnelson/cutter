@@ -36,7 +36,7 @@ HexdumpWidget::HexdumpWidget(MainWindow *main, QAction *action) :
 
     ui->copyMD5->setIcon(QIcon(":/img/icons/copy.svg"));
     ui->copySHA1->setIcon(QIcon(":/img/icons/copy.svg"));
-
+    ui->copySHA256->setIcon(QIcon(":/img/icons/copy.svg"));
 
     ui->splitter->setChildrenCollapsible(false);
 
@@ -61,6 +61,7 @@ HexdumpWidget::HexdumpWidget(MainWindow *main, QAction *action) :
     ui->bytesMD5->setPlaceholderText("Select bytes to display information");
     ui->bytesEntropy->setPlaceholderText("Select bytes to display information");
     ui->bytesSHA1->setPlaceholderText("Select bytes to display information");
+    ui->bytesSHA256->setPlaceholderText("Select bytes to display information");
     ui->hexDisasTextEdit->setPlaceholderText("Select bytes to display information");
 
     setupFonts();
@@ -79,7 +80,7 @@ HexdumpWidget::HexdumpWidget(MainWindow *main, QAction *action) :
 
     this->setWindowTitle(tr("Hexdump"));
 
-    refreshDeferrer = createReplacingRefreshDeferrer<RVA>(false, [this](const RVA *offset) {
+    refreshDeferrer = createReplacingRefreshDeferrer<RVA>(false, [this](const RVA * offset) {
         refresh(offset ? *offset : RVA_INVALID);
     });
 
@@ -206,6 +207,7 @@ void HexdumpWidget::clearParseWindow()
     ui->bytesEntropy->setText("");
     ui->bytesMD5->setText("");
     ui->bytesSHA1->setText("");
+    ui->bytesSHA256->setText("");
 }
 
 void HexdumpWidget::updateParseWindow(RVA start_address, int size)
@@ -266,6 +268,7 @@ void HexdumpWidget::updateParseWindow(RVA start_address, int size)
     // Fill the information tab hashes and entropy
     ui->bytesMD5->setText(Core()->cmd("ph md5 " + argument).trimmed());
     ui->bytesSHA1->setText(Core()->cmd("ph sha1 " + argument).trimmed());
+    ui->bytesSHA256->setText(Core()->cmd("ph sha256 " + argument).trimmed());
     ui->bytesEntropy->setText(Core()->cmd("ph entropy " + argument).trimmed());
     ui->bytesMD5->setCursorPosition(0);
     ui->bytesSHA1->setCursorPosition(0);
@@ -349,6 +352,14 @@ void HexdumpWidget::on_copySHA1_clicked()
     // this->main->addOutput("SHA1 copied to clipboard: " + sha1);
 }
 
+void HexdumpWidget::on_copySHA256_clicked()
+{
+    QString sha1 = ui->bytesSHA256->text();
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(sha1);
+    // FIXME
+    // this->main->addOutput("SHA1 copied to clipboard: " + sha1);
+}
 
 void HexdumpWidget::selectHexPreview()
 {

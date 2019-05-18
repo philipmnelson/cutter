@@ -78,6 +78,8 @@ private slots:
     void on_hexSideTab_2_currentChanged(int index);
     void on_copyMD5_clicked();
     void on_copySHA1_clicked();
+    void on_copySHA256_clicked();
+
 };
 
 #endif // HEXDUMPWIDGET_H
