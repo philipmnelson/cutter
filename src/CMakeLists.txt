@@ -141,6 +141,12 @@ set(SOURCES
     widgets/AddressableDockWidget.cpp
     dialogs/preferences/AnalOptionsWidget.cpp
     common/DecompilerHighlighter.cpp
+    dialogs/GlibcHeapInfoDialog.cpp
+    widgets/HeapDockWidget.cpp
+    widgets/GlibcHeapWidget.cpp
+    dialogs/GlibcHeapBinsDialog.cpp
+    widgets/HeapBinsGraphView.cpp
+    dialogs/ArenaInfoDialog.cpp
 )
 set(HEADER_FILES
     core/Cutter.h
@@ -294,6 +300,12 @@ set(HEADER_FILES
     widgets/AddressableDockWidget.h
     dialogs/preferences/AnalOptionsWidget.h
     common/DecompilerHighlighter.h
+    dialogs/GlibcHeapInfoDialog.h
+    widgets/HeapDockWidget.h
+    widgets/GlibcHeapWidget.h
+    dialogs/GlibcHeapBinsDialog.h
+    widgets/HeapBinsGraphView.h
+    dialogs/ArenaInfoDialog.h
 )
 set(UI_FILES
     dialogs/AboutDialog.ui
@@ -360,6 +372,11 @@ set(UI_FILES
     dialogs/LayoutManager.ui
     widgets/RizinGraphWidget.ui
     dialogs/preferences/AnalOptionsWidget.ui
+    dialogs/GlibcHeapInfoDialog.ui
+    widgets/HeapDockWidget.ui
+    widgets/GlibcHeapWidget.ui
+    dialogs/GlibcHeapBinsDialog.ui
+    dialogs/ArenaInfoDialog.ui
 )
 set(QRC_FILES
     resources.qrc
@@ -459,6 +476,11 @@ if(CUTTER_ENABLE_CRASH_REPORTS)
 endif()
 
 target_link_libraries(Cutter PUBLIC ${QT_PREFIX}::Core ${QT_PREFIX}::Widgets ${QT_PREFIX}::Gui PRIVATE  ${QT_PREFIX}::Svg ${QT_PREFIX}::Network)
+if (CUTTER_QT6)
+    target_link_libraries(Cutter PUBLIC Qt6::Core5Compat Qt6::SvgWidgets)
+    target_link_libraries(Cutter PRIVATE Qt6::OpenGLWidgets)
+endif()
+
 target_link_libraries(Cutter PUBLIC ${RIZIN_TARGET})
 if(CUTTER_ENABLE_PYTHON)
     if (WIN32)

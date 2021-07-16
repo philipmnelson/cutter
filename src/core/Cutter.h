@@ -397,6 +397,42 @@ public:
      */
     QJsonDocument getChildProcesses(int pid);
     QJsonDocument getBacktrace();
+    /**
+     * @brief Get a list of heap chunks
+     * Uses RZ_API rz_heap_chunks_list to get vector of chunks
+     * If arena_addr is zero return the chunks for main arena
+     * @param arena_addr base address for the arena
+     * @return Vector of heap chunks for the given arena
+     */
+    QVector<Chunk> getHeapChunks(RVA arena_addr);
+
+    /**
+     * @brief Get a list of heap arenas
+     * Uses RZ_API rz_heap_arenas_list to get list of arenas
+     * @return Vector of arenas
+     */
+    QVector<Arena> getArenas();
+
+    /**
+     * @brief Get detailed information about a heap chunk
+     * Uses RZ_API rz_heap_chunk
+     * @return RzHeapChunkSimple struct pointer for the heap chunk
+     */
+    RzHeapChunkSimple *getHeapChunk(ut64 addr);
+    /**
+     * @brief Get heap bins of an arena with given base address
+     * (including large, small, fast, unsorted, tcache)
+     * @param arena_addr Base address of the arena
+     * @return QVector of non empty RzHeapBin pointers
+     */
+    QVector<RzHeapBin *> getHeapBins(ut64 arena_addr);
+    /**
+     * @brief Write the given chunk header to memory
+     * @param chunkSimple RzHeapChunkSimple pointer of the chunk to be written
+     * @return true if the write succeeded else false
+     */
+    bool writeHeapChunk(RzHeapChunkSimple *chunkSimple);
+    int getArchBits();
     void startDebug();
     void startEmulation();
     /**
@@ -456,6 +492,7 @@ public:
     bool currentlyDebugging = false;
     bool currentlyEmulating = false;
     bool currentlyTracing = false;
+    bool currentlyRemoteDebugging = false;
     int currentlyAttachedToPID = -1;
     QString currentlyOpenFile;
 

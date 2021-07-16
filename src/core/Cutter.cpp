@@ -659,7 +659,7 @@ bool CutterCore::tryFile(QString path, bool rw)
         return false;
     }
 
-    rz_core_file_close(core, cf);
+    rz_core_file_close(cf);
 
     return true;
 }
@@ -1556,6 +1556,139 @@ QJsonDocument CutterCore::getProcessThreads(int pid)
     }
 }
 
+QVector<Chunk> CutterCore::getHeapChunks(RVA arena_addr)
+{
+    CORE_LOCK();
+    QVector<Chunk> chunks_vector;
+    ut64 m_arena;
+
+    if (!arena_addr) {
+        // if arena_addr is zero get base address of main arena
+        RzList *arenas = rz_heap_arenas_list(core);
+        if (arenas->length == 0) {
+            rz_list_free(arenas);
+            return chunks_vector;
+        }
+        m_arena = ((RzArenaListItem *)arenas->head->data)->addr;
+        rz_list_free(arenas);
+    } else {
+        m_arena = arena_addr;
+    }
+
+    // Get chunks using api and store them in a chunks_vector
+    RzList *chunks = rz_heap_chunks_list(core, m_arena);
+    RzListIter *iter;
+    RzHeapChunkListItem *data;
+    CutterRListForeach(chunks, iter, RzHeapChunkListItem, data)
+    {
+        Chunk chunk;
+        chunk.offset = data->addr;
+        chunk.size = (int)data->size;
+        chunk.status = QString(data->status);
+        chunks_vector.append(chunk);
+    }
+
+    rz_list_free(chunks);
+    return chunks_vector;
+}
+
+int CutterCore::getArchBits()
+{
+    CORE_LOCK();
+    return core->dbg->bits;
+}
+
+QVector<Arena> CutterCore::getArenas()
+{
+    CORE_LOCK();
+    QVector<Arena> arena_vector;
+
+    // get arenas using API and store them in arena_vector
+    RzList *arenas = rz_heap_arenas_list(core);
+    RzListIter *iter;
+    RzArenaListItem *data;
+    CutterRListForeach(arenas, iter, RzArenaListItem, data)
+    {
+        Arena arena;
+        arena.offset = data->addr;
+        arena.type = QString(data->type);
+        arena.last_remainder = data->arena->last_remainder;
+        arena.top = data->arena->top;
+        arena.next = data->arena->next;
+        arena.next_free = data->arena->next_free;
+        arena.system_mem = data->arena->system_mem;
+        arena.max_system_mem = data->arena->max_system_mem;
+        arena_vector.append(arena);
+    }
+
+    rz_list_free(arenas);
+    return arena_vector;
+}
+
+RzHeapChunkSimple *CutterCore::getHeapChunk(ut64 addr)
+{
+    CORE_LOCK();
+    return rz_heap_chunk(core, addr);
+}
+
+QVector<RzHeapBin *> CutterCore::getHeapBins(ut64 arena_addr)
+{
+    CORE_LOCK();
+    QVector<RzHeapBin *> bins_vector;
+
+    MallocState *arena = rz_heap_get_arena(core, arena_addr);
+    if (!arena) {
+        return bins_vector;
+    }
+
+    // get small, large, unsorted bins
+    for (int i = 0; i <= NBINS - 2; i++) {
+        RzHeapBin *bin = rz_heap_bin_content(core, arena, i, arena_addr);
+        if (!bin) {
+            continue;
+        }
+        if (!rz_list_length(bin->chunks)) {
+            rz_heap_bin_free_64(bin);
+            continue;
+        }
+        bins_vector.append(bin);
+    }
+    // get fastbins
+    for (int i = 0; i < 10; i++) {
+        RzHeapBin *bin = rz_heap_fastbin_content(core, arena, i);
+        if (!bin) {
+            continue;
+        }
+        if (!rz_list_length(bin->chunks)) {
+            rz_heap_bin_free_64(bin);
+            continue;
+        }
+        bins_vector.append(bin);
+    }
+    // get tcache bins
+    RzList *tcache_bins = rz_heap_tcache_content(core, arena_addr);
+    RzListIter *iter;
+    RzHeapBin *bin;
+    CutterRListForeach(tcache_bins, iter, RzHeapBin, bin)
+    {
+        if (!bin) {
+            continue;
+        }
+        if (!rz_list_length(bin->chunks)) {
+            rz_heap_bin_free_64(bin);
+            continue;
+        }
+        bins_vector.append(bin);
+    }
+    return bins_vector;
+}
+
+bool CutterCore::writeHeapChunk(RzHeapChunkSimple *chunk_simple)
+{
+    CORE_LOCK();
+    return rz_heap_write_chunk(core, chunk_simple);
+}
+
 QJsonDocument CutterCore::getChildProcesses(int pid)
 {
     // Return the currently debugged process and it's children
@@ -1803,6 +1936,7 @@ void CutterCore::attachRemote(const QString &uri)
             emit toggleDebugView();
         }
 
+        currentlyRemoteDebugging = true;
         emit codeRebased();
         emit attachedRemote(true);
         emit debugTaskStateChanged();
@@ -1873,6 +2007,7 @@ void CutterCore::stopDebug()
 
     currentlyDebugging = false;
     currentlyTracing = false;
+    currentlyRemoteDebugging = false;
     emit debugTaskStateChanged();
 
     if (currentlyEmulating) {
@@ -2873,23 +3008,23 @@ QList<RelocDescription> CutterCore::getAllRelocs()
     QList<RelocDescription> ret;
 
     if (core && core->bin && core->bin->cur && core->bin->cur->o) {
-        auto relocs = core->bin->cur->o->relocs;
-        RBIter iter;
-        RzBinReloc *br;
-        rz_rbtree_foreach(relocs, iter, br, RzBinReloc, vrb)
-        {
-            RelocDescription reloc;
+        auto relocs = rz_bin_object_patch_relocs(core->bin->cur, core->bin->cur->o);
+        if (!relocs) {
+            return ret;
+        }
+        for (size_t i = 0; i < relocs->relocs_count; i++) {
+            RzBinReloc *reloc = relocs->relocs[i];
+            RelocDescription desc;
+            desc.vaddr = reloc->vaddr;
+            desc.paddr = reloc->paddr;
+            desc.type = (reloc->additive ? "ADD_" : "SET_") + QString::number(reloc->type);
 
-            reloc.vaddr = br->vaddr;
-            reloc.paddr = br->paddr;
-            reloc.type = (br->additive ? "ADD_" : "SET_") + QString::number(br->type);
-
-            if (br->import)
-                reloc.name = br->import->name;
+            if (reloc->import)
+                desc.name = reloc->import->name;
             else
-                reloc.name = QString("reloc_%1").arg(QString::number(br->vaddr, 16));
+                desc.name = QString("reloc_%1").arg(QString::number(reloc->vaddr, 16));
 
-            ret << reloc;
+            ret << desc;
         }
     }
 
@@ -3481,7 +3616,7 @@ QString CutterCore::addTypes(const char *str)
 {
     CORE_LOCK();
     char *error_msg = nullptr;
-    char *parsed = rz_parse_c_string(core->analysis, str, &error_msg);
+    char *parsed = rz_type_parse_c_string(core->analysis->typedb, str, &error_msg);
     QString error;
 
     if (!parsed) {
@@ -3492,7 +3627,7 @@ QString CutterCore::addTypes(const char *str)
         return error;
     }
 
-    rz_analysis_save_parsed_type(core->analysis, parsed);
+    rz_type_db_save_parsed_type(core->analysis->typedb, parsed);
     rz_mem_free(parsed);
 
     if (error_msg) {
@@ -3922,7 +4057,7 @@ QString CutterCore::getVersionInformation()
         { "rz_crypto", &rz_crypto_version },
         { "rz_bp", &rz_bp_version },
         { "rz_debug", &rz_debug_version },
-        { "rz_hash", &rz_hash_version },
+        { "rz_msg_digest", &rz_msg_digest_version },
         { "rz_io", &rz_io_version },
 #if !USE_LIB_MAGIC
         { "rz_magic", &rz_magic_version },
